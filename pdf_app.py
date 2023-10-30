@@ -10,6 +10,7 @@ class PDFApp:
         self.window = tk.Tk()
         self.window.title("PDF Language Checker")
         self.setup_ui()
+        self.processing_flag = False
 
     def setup_ui(self):
         label1 = tk.Label(self.window, text="PDF File:")
@@ -70,12 +71,16 @@ class PDFApp:
         self.file_path.set(file_path)
 
     def run_processing(self):
-        pdf_file = self.file_path.get()
-        language_code = self.language_code_combobox.get().split()[0]  # Kısaltmayı almak için
-        processor = PDFProcessor(language_code)
+        if self.processing_flag:
+            messagebox.showinfo("Info", "Processing is already in progress.")
+            return
         
         def threaded_function():
             try:
+                pdf_file = self.file_path.get()
+                language_code = self.language_code_combobox.get().split()[0]  # Kısaltmayı almak için
+                processor = PDFProcessor(language_code)
+                self.processing_flag = True
                 found_segments = processor.extract_language_segments(pdf_file, self.update_progress)
                 with open("result.txt", "w", encoding="utf-8") as f:
                     if found_segments:
@@ -86,7 +91,9 @@ class PDFApp:
                 messagebox.showinfo("Info", "Results written to result.txt!")
             except Exception as e:
                 messagebox.showerror("Error", f"An error occurred: {str(e)}")
-
+            finally:
+                self.processing_flag = False
+                
         threading.Thread(target=threaded_function, daemon=True).start()
 
     def run(self):
