@@ -2,16 +2,46 @@
 import PyPDF2
 import langid
 import re
+import pycountry
 
 class PDFProcessor:
     def __init__(self, language_code):
         self.language_code = language_code
 
     @staticmethod
+    def get_country_name_patterns():
+        # Ülke isimleri ve resmi isimlerini al
+        countries = [country.name for country in pycountry.countries]
+        official_names = [country.official_name for country in pycountry.countries if hasattr(country, 'official_name')]
+        all_names = set(countries + official_names)
+
+        # Ülke isimlerinin her bir harfini büyük harf olarak ve kelime aralarında isteğe bağlı boşluklarla eşleştir
+        all_names_patterns = []
+        for name in all_names:
+            pattern = ''.join([f"{char}\\s*" for char in name if char.isalpha()])  # Sadece alfabetik karakterler için
+            all_names_patterns.append(pattern)
+
+        return all_names_patterns
+
+    @staticmethod
     def clean_text(text):
+        # Ülke isimlerini regex pattern olarak al
+        country_name_patterns = PDFProcessor.get_country_name_patterns()
+
+        # Yapışık ülke isimlerini ve tek tek ülke isimlerini metinden çıkar
+        for pattern in country_name_patterns:
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+
+        # Sayıları ve özel karakterleri çıkar
         clean_text = re.sub(r'\d+', '', text)
         clean_text = re.sub(r'[^\w\s]', '', clean_text)
+
+        # İki karakterden kısa olan kelimeleri çıkar
         clean_text = ' '.join([word for word in clean_text.split() if len(word) > 2])
+
+        # Fazladan boşlukları temizle
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+
         return clean_text
 
     def extract_language_segments(self, pdf_file, update_progress):
